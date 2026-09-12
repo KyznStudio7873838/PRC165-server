@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>PRC165 - Multiplayer</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+body{font-family:Arial,sans-serif;background:#050509;color:#fff;min-height:100dvh;padding:15px;padding-bottom:80px}
+.header{background:linear-gradient(135deg,#0d3d1a,#0a4d1f);padding:15px;border-radius:12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;border-bottom:2px solid #ffd700}
+.logo{font-size:20px;font-weight:900;color:#ffd700;letter-spacing:2px}
+.balance{background:rgba(0,0,0,.5);border:1px solid #ffd700;border-radius:20px;padding:6px 12px;font-size:12px;font-weight:800;color:#ffd700}
+.card{background:#131a26;border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:16px;margin-bottom:12px}
+.btn{width:100%;padding:14px;background:linear-gradient(135deg,#00e676,#00b85c);border:none;border-radius:12px;color:#000;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;margin-bottom:8px}
+.btn.secondary{background:#1c2536;color:#fff;border:1px solid rgba(255,215,0,.2)}
+.btn.orange{background:linear-gradient(135deg,#ffd700,#ff8c00)}
+.input{width:100%;padding:12px;background:rgba(0,0,0,.5);border:1px solid rgba(255,215,0,.2);border-radius:10px;color:#fff;font-size:14px;margin-bottom:10px;outline:none;font-family:inherit}
+.label{font-size:10px;color:#8892a6;margin-bottom:5px;font-weight:800;text-transform:uppercase}
+.tabs{display:flex;gap:6px;margin-bottom:15px;background:rgba(0,0,0,.4);padding:4px;border-radius:12px}
+.tab{flex:1;padding:10px;background:transparent;border:none;color:#8892a6;font-weight:800;border-radius:10px;cursor:pointer;font-family:inherit;font-size:12px}
+.tab.active{background:linear-gradient(135deg,#ffd700,#ff8c00);color:#000}
+.game-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:15px}
+.game-card{background:#131a26;border:1px solid rgba(255,215,0,.2);border-radius:14px;padding:20px 10px;text-align:center;cursor:pointer}
+.game-icon{font-size:40px;margin-bottom:10px}
+.game-name{font-size:12px;font-weight:900;color:#ffd700}
+.nav{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(180deg,#0d3d1a,#0a4d1f);border-top:2px solid #ffd700;display:flex;justify-content:space-around;padding:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+.nav-item{flex:1;text-align:center;font-size:10px;color:#8892a6;cursor:pointer;font-weight:800;padding:5px}
+.nav-item.active{color:#ffd700}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:12px 20px;border-radius:10px;font-weight:800;z-index:9999;font-size:13px;max-width:90%}
+.toast.win{background:#00e676;color:#000}
+.toast.lose{background:#ff2e44;color:#fff}
+.toast.info{background:#00b0ff;color:#fff}
+.hidden{display:none !important}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.97);z-index:1000;display:flex;justify-content:center;align-items:center;padding:20px}
+.center{text-align:center}
+.big{font-size:24px;font-weight:900;color:#ffd700;margin-bottom:10px}
+.muted{color:#8892a6;font-size:12px}
+</style>
+</head>
+<body>
+
+<div id="authScreen" class="overlay">
+  <div style="max-width:400px;width:100%">
+    <div class="center" style="margin-bottom:20px">
+      <div class="big">PRC165</div>
+      <div class="muted">Multiplayer Premium Gaming</div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchAuth('login')">Masuk</button>
+      <button class="tab" onclick="switchAuth('register')">Daftar</button>
+    </div>
+    <div id="loginForm">
+      <div class="label">Username</div>
+      <input class="input" id="loginUser" placeholder="Username">
+      <div class="label">Password</div>
+      <input class="input" id="loginPass" type="password" placeholder="Password">
+      <button class="btn" onclick="doLogin()">MASUK</button>
+    </div>
+    <div id="registerForm" class="hidden">
+      <div class="label">Username Baru</div>
+      <input class="input" id="regUser" placeholder="Username">
+      <div class="label">Password</div>
+      <input class="input" id="regPass" type="password" placeholder="Min 3 karakter">
+      <div class="label">Kode Referral (Opsional)</div>
+      <input class="input" id="regReferral" placeholder="Kode">
+      <button class="btn" onclick="doRegister()">DAFTAR (+50.000)</button>
+    </div>
+  </div>
+</div>
+
+<div id="appScreen" class="hidden">
+  <div class="header">
+    <div class="logo">PRC165</div>
+    <div class="balance">Rp <span id="balanceDisplay">0</span></div>
+  </div>
+
+  <div id="pageHome">
+    <div class="card center">
+      <div style="font-size:14px;font-weight:800;color:#ffd700;margin-bottom:5px">Selamat Datang!</div>
+      <div class="muted" id="welcomeText">Multiplayer - semua player 1 server</div>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg,#0a4d1f,#00b85c);border-color:#ffd700">
+      <div class="center">
+        <div class="muted">PROGRESSIVE JACKPOT</div>
+        <div style="font-size:22px;font-weight:900;color:#ffd700">Rp <span id="jackpotDisplay">10.000.000</span></div>
+      </div>
+    </div>
+    <button class="btn orange" onclick="claimBonus()">KLAIM BONUS HARIAN 5.000</button>
+    <div style="margin:15px 0 10px;font-size:12px;font-weight:900;color:#ffd700">GAME TERSEDIA</div>
+    <div class="game-grid">
+      <div class="game-card" onclick="playSpace()">
+        <div class="game-icon">🚀</div>
+        <div class="game-name">Space Creatures</div>
+      </div>
+      <div class="game-card" onclick="toast('Coming soon','info')">
+        <div class="game-icon">🀄</div>
+        <div class="game-name">Mahjong Ways</div>
+      </div>
+    </div>
+    <div style="margin:15px 0 10px;font-size:12px;font-weight:900;color:#ffd700">LEADERBOARD</div>
+    <div class="card" id="leaderboardCard">Loading...</div>
+    <button class="btn secondary" onclick="doLogout()" style="margin-top:15px">KELUAR AKUN</button>
+  </div>
+
+  <div id="pageWallet" class="hidden">
+    <div class="card">
+      <div class="label">Game Coin</div>
+      <div style="font-size:20px;font-weight:900;color:#ffd700">Rp <span id="gameCoin">0</span></div>
+    </div>
+    <div class="card">
+      <div class="label">Wallet Coin (bisa ditarik)</div>
+      <div style="font-size:20px;font-weight:900;color:#00e676"><span id="walletCoin">0</span> WC</div>
+    </div>
+    <div class="label">Konversi Game ke Wallet (1000:1)</div>
+    <input class="input" id="convertAmount" type="number" placeholder="Contoh: 10000">
+    <button class="btn" onclick="doConvert()">KONVERSI</button>
+    <div class="label" style="margin-top:15px">Tarik Wallet</div>
+    <input class="input" id="withdrawAmount" type="number" placeholder="Min 10 WC">
+    <button class="btn orange" onclick="doWithdraw()">TARIK</button>
+    <div class="label" style="margin-top:15px">Top Up Game (Demo)</div>
+    <input class="input" id="topupAmount" type="number" placeholder="Min 10000">
+    <button class="btn secondary" onclick="doTopup()">TOP UP</button>
+  </div>
+
+  <div id="pageHistory" class="hidden">
+    <div style="margin-bottom:10px;font-size:12px;font-weight:900;color:#ffd700">RIWAYAT</div>
+    <div class="card" id="historyList">Loading...</div>
+  </div>
+
+  <div id="pageAccount" class="hidden">
+    <div class="card">
+      <div class="label">Username</div>
+      <div style="font-size:16px;font-weight:900" id="accUsername">-</div>
+      <div class="label" style="margin-top:10px">Role</div>
+      <div style="font-size:14px;color:#ffd700;font-weight:800" id="accRole">-</div>
+      <div class="label" style="margin-top:10px">Total Bet</div>
+      <div style="font-size:14px" id="accTotalBet">0</div>
+      <div class="label" style="margin-top:10px">Total Win</div>
+      <div style="font-size:14px;color:#00e676" id="accTotalWin">0</div>
+      <div class="label" style="margin-top:10px">Total Withdraw</div>
+      <div style="font-size:14px;color:#ffd700" id="accTotalWithdraw">0</div>
+    </div>
+    <button class="btn secondary" onclick="doLogout()">KELUAR</button>
+  </div>
+
+  <div class="nav">
+    <div class="nav-item active" onclick="showPage('home')">Home</div>
+    <div class="nav-item" onclick="showPage('wallet')">Wallet</div>
+    <div class="nav-item" onclick="showPage('history')">History</div>
+    <div class="nav-item" onclick="showPage('account')">Akun</div>
+  </div>
+</div>
+
+<script>
+var API_URL = window.location.origin;
+var token = localStorage.getItem('prc165_token') || null;
+var currentUser = null;
+
+function toast(msg, type) {
+  type = type || 'info';
+  var e = document.querySelector('.toast');
+  if (e) e.remove();
+  var t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.innerText = msg;
+  document.body.appendChild(t);
+  setTimeout(function() { t.style.opacity = '0'; t.style.transition = '0.3s'; }, 2000);
+  setTimeout(function() { t.remove(); }, 2500);
+}
+
+async function api(endpoint, options) {
+  options = options || {};
+  var headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = token;
+  var res = await fetch(API_URL + endpoint, { method: options.method || 'GET', headers: headers, body: options.body });
+  var data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+function updateUI() {
+  if (!currentUser) return;
+  document.getElementById('balanceDisplay').innerText = currentUser.balance.toLocaleString('id-ID');
+  document.getElementById('gameCoin').innerText = currentUser.balance.toLocaleString('id-ID');
+  document.getElementById('walletCoin').innerText = (currentUser.wallet_balance || 0).toLocaleString('id-ID');
+  document.getElementById('welcomeText').innerText = 'Halo, ' + currentUser.username + '!';
+  document.getElementById('accUsername').innerText = currentUser.username;
+  document.getElementById('accRole').innerText = currentUser.role.toUpperCase();
+  document.getElementById('accTotalBet').innerText = (currentUser.total_bet || 0).toLocaleString('id-ID');
+  document.getElementById('accTotalWin').innerText = (currentUser.total_win || 0).toLocaleString('id-ID');
+  document.getElementById('accTotalWithdraw').innerText = (currentUser.total_withdraw || 0).toLocaleString('id-ID');
+}
+
+async function refreshUser() {
+  try {
+    var d = await api('/api/me');
+    currentUser = d.user;
+    updateUI();
+  } catch (e) { doLogout(); }
+}
+
+function switchAuth(mode) {
+  var tabs = document.querySelectorAll('.tab');
+  tabs[0].classList.toggle('active', mode === 'login');
+  tabs[1].classList.toggle('active', mode === 'register');
+  document.getElementById('loginForm').classList.toggle('hidden', mode !== 'login');
+  document.getElementById('registerForm').classList.toggle('hidden', mode !== 'register');
+}
+
+async function doLogin() {
+  var u = document.getElementById('loginUser').value.trim();
+  var p = document.getElementById('loginPass').value.trim();
+  if (!u || !p) return toast('Isi username & password', 'lose');
+  try {
+    var d = await api('/api/login', { method: 'POST', body: JSON.stringify({ username: u, password: p }) });
+    token = d.token;
+    currentUser = d.user;
+    localStorage.setItem('prc165_token', token);
+    document.getElementById('authScreen').classList.add('hidden');
+    document.getElementById('appScreen').classList.remove('hidden');
+    updateUI();
+    loadLeaderboard();
+    loadJackpot();
+    toast('Selamat datang, ' + u, 'win');
+  } catch (e) { toast(e.message, 'lose'); }
+}
+
+async function doRegister() {
+  var u = document.getElementById('regUser').value.trim();
+  var p = document.getElementById('regPass').value.trim();
+  var r = document.getElementById('regReferral').value.trim();
+  if (!u || !p) return toast('Isi username & password', 'lose');
+  try {
+    var d = await api('/api/register', { method: 'POST', body: JSON.stringify({ username: u, password: p, referral: r }) });
+    token = d.token;
+    currentUser = d.user;
+    localStorage.setItem('prc165_token', token);
+    document.getElementById('authScreen').classList.add('hidden');
+    document.getElementById('appScreen').classList.remove('hidden');
+    updateUI();
+    loadLeaderboard();
+    loadJackpot();
+    toast('Registrasi berhasil! +50.000', 'win');
+  } catch (e) { toast(e.message, 'lose'); }
+}
+
+async function doLogout() {
+  try { await api('/api/logout', { method: 'POST' }); } catch (e) {}
+  localStorage.removeItem('prc165_token');
+  token = null;
+  currentUser = null;
+  document.getElementById('appScreen').classList.add('hidden');
+  document.getElementById('authScreen').classList.remove('hidden');
+}
+
+function showPage(name) {
+  var pages = ['home', 'wallet', 'history', 'account'];
+  pages.forEach(function(p) {
+    document.getElementById('page' + p.charAt(0).toUpperCase() + p.slice(1)).classList.toggle('hidden', p !== name);
+  });
+  var navs = document.querySelectorAll('.nav-item');
+  pages.forEach(function(p, i) { navs[i].classList.toggle('active', p === name); });
+  if (name === 'history') loadHistory();
+  if (name === 'account' || name === 'wallet') refreshUser();
+}
+
+async function loadLeaderboard() {
+  try {
+    var d = await api('/api/leaderboard');
+    var html = d.leaderboard.map(function(p, i) {
+      var color = i < 3 ? '#ffd700' : '#8892a6';
+      var you = currentUser && p.username === currentUser.username ? ' (YOU)' : '';
+      return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,215,0,.1);font-size:12px"><span><b style="color:' + color + '">#' + (i + 1) + '</b> ' + p.username + you + '</span><span style="color:#ffd700;font-weight:900">' + p.balance.toLocaleString('id-ID') + '</span></div>';
+    }).join('');
+    document.getElementById('leaderboardCard').innerHTML = html || 'Belum ada pemain';
+  } catch (e) {}
+}
+
+async function loadJackpot() {
+  try {
+    var d = await api('/api/jackpot');
+    document.getElementById('jackpotDisplay').innerText = d.jackpot.toLocaleString('id-ID');
+  } catch (e) {}
+}
+
+async function loadHistory() {
+  try {
+    var d = await api('/api/history');
+    var html = d.history.map(function(h) {
+      var color = h.win > 0 ? '#00e676' : '#ff2e44';
+      var sign = h.win > 0 ? '+' : '';
+      var mult = h.mult ? h.mult.toFixed(2) + 'x' : '';
+      return '<div style="padding:8px 0;border-bottom:1px solid rgba(255,215,0,.1);font-size:12px;display:flex;justify-content:space-between"><span><b style="color:#ffd700">' + h.game + '</b> ' + mult + '</span><span style="color:' + color + ';font-weight:900">' + sign + h.win.toLocaleString('id-ID') + '</span></div>';
+    }).join('');
+    document.getElementById('historyList').innerHTML = html || 'Belum ada riwayat';
+  } catch (e) {}
+}
+
+async function claimBonus() {
+  try {
+    var d = await api('/api/claim-bonus', { method: 'POST' });
+    currentUser.balance = d.balance;
+    updateUI();
+    toast('+5.000 bonus!', 'win');
+  } catch (e) { toast(e.message, 'lose'); }
+}
+
+async function doConvert() {
+  var amount = parseInt(document.getElementById('convertAmount').value) || 0;
+  if (amount < 1000) return toast('Min 1000', 'lose');
+  try {
+    var d = await api('/api/wallet/convert', { method: 'POST', body: JSON.stringify({ amount: amount }) });
+    currentUser.balance = d.balance;
+    currentUser.wallet_balance = d.wallet_balance;
+    updateUI();
+    toast('Konversi! +' + d.walletGain + ' WC', 'win');
+  } catch (e) { toast(e.message, 'lose'); }
+}
+
+async function doWithdraw() {
+  var amount = parseInt(document.getElementById('withdrawAmount').value) || 0;
+  if (amount < 10) return toast('Min 10 WC', 'lose');
+  try {
+    var d = await api('/api/wallet/withdraw', { method: 'POST', body: JSON.stringify({ amount: amount }) });
+    currentUser.balance = d.balance;
+    currentUser.wallet_balance = d.wallet_balance;
+    currentUser.total_withdraw = d.total_withdraw;
+    updateUI();
+    toast('Withdraw ' + amount + ' WC berhasil!', 'win');
+  } catch (e) { toast(e.message, 'lose'); }
+}
+
+async function doTopup() {
+  var amount = parseInt(document.getElementById('topupAmount').value) || 0;
+  if (amount < 10000) return toast('Min 10.000', 'lose');
+  try {
+    var d = await api('/api/wallet/topup', { method: 'POST', body: JSON.stringify({ amount: amount }) });
+    currentUser.balance = d.balance;
+    updateUI();
+    toast('Top up! +' + d.totalTopup.toLocaleString('id-ID'), 'win');
+  } catch (e) { toast(e.message, 'lose'); }
+}
+
+async function playSpace() {
+  var bet = prompt('Taruhan (min 2000):', '2000');
+  if (!bet) return;
+  var betNum = parseInt(bet);
+  if (betNum < 2000) return toast('Min 2000', 'lose');
+  try {
+    var start = await api('/api/game/space/bet', { method: 'POST', body: JSON.stringify({ bet: betNum }) });
+    currentUser.balance = start.balance;
+    updateUI();
+    var mult = 1.0;
+    var crashPoint = start.crashPoint;
+    var interval = setInterval(function() {
+      mult += 0.15;
+      if (mult >= crashPoint) {
+        clearInterval(interval);
+        toast('CRASH di ' + mult.toFixed(2) + 'x!', 'lose');
+      }
+    }, 100);
+    setTimeout(async function() {
+      clearInterval(interval);
+      var cashMult = Math.min(mult, crashPoint - 0.05);
+      if (cashMult > 1 && cashMult < crashPoint) {
+        try {
+          var d = await api('/api/game/space/cashout', { method: 'POST', body: JSON.stringify({ bet: betNum, mult: cashMult }) });
+          currentUser.balance = d.balance;
+          currentUser.wallet_balance = d.wallet_balance;
+          updateUI();
+          toast('Menang! +Rp ' + d.win.toLocaleString('id-ID'), 'win');
+        } catch (e) { toast(e.message, 'lose'); }
+      }
+    }, 3000);
+  } catch (e) { toast(e.message, 'lose'); }
+}
+
+async function init() {
+  if (token) {
+    try {
+      await refreshUser();
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('appScreen').classList.remove('hidden');
+      loadLeaderboard();
+      loadJackpot();
+    } catch (e) { doLogout(); }
+  }
+}
+init();
+</script>
+</body>
+  </html>
